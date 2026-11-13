@@ -18,7 +18,7 @@ Keycloak 26.4 through 26.8. Built against 26.8; the integration tests run agains
 
 ## Install
 
-Build with `mvn -B -DskipTests package` and copy `target/keycloak-pin-<version>.jar` into Keycloak's `providers/` directory, then run `kc.sh build` (or start with `start-dev`). The jar has no runtime dependencies beyond Keycloak.
+Download the jar from [Maven Central](https://central.sonatype.com/artifact/io.phasetwo.keycloak/keycloak-pin) (or build it with `mvn -B -DskipTests package` and take `target/keycloak-pin-<version>.jar`), copy it into Keycloak's `providers/` directory, then run `kc.sh build` (or start with `start-dev`). The jar has no runtime dependencies beyond Keycloak.
 
 Maven coordinates, for extensions that use the API: `io.phasetwo.keycloak:keycloak-pin`.
 
