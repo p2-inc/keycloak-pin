@@ -1,0 +1,14 @@
+target/
+*~
+*.DS_Store
+tmp/*
+data/*
+dependency-reduced-pom.xml
+.classpath
+NOTES
+.idea/
+.factorypath
+.project
+.settings/
+.claude
+node_modules

@@ -1,0 +1,137 @@
+{
+  "realm": "pin-test",
+  "enabled": true,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": false,
+  "eventsEnabled": true,
+  "eventsListeners": ["jboss-logging"],
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "noreply@phasetwo.io"
+  },
+  "clients": [
+    {
+      "clientId": "pin-client",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost/callback"],
+      "webOrigins": ["+"]
+    }
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "pin browser",
+      "description": "username/password, then PIN when the user has one",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 0,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 1,
+          "flowAlias": "pin browser forms",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "pin browser forms",
+      "description": "",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 1,
+          "flowAlias": "pin browser conditional",
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "pin browser conditional",
+      "description": "",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorConfig": "pin-config",
+          "authenticator": "phasetwo-pin",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 1,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "pin reset credentials",
+      "description": "reset credentials with PIN reset",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "reset-credentials-choose-user",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 0,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "reset-credential-email",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 1,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "phasetwo-pin-reset",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 2,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "pin-config",
+      "config": {
+        "max-attempts": "3"
+      }
+    }
+  ],
+  "browserFlow": "pin browser",
+  "resetCredentialsFlow": "pin reset credentials"
+}
