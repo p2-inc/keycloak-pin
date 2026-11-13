@@ -4,7 +4,7 @@
   <groupId>io.phasetwo.keycloak</groupId>
   <artifactId>keycloak-pin</artifactId>
   <packaging>jar</packaging>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1</version>
 
   <name>Phase Two Keycloak PIN</name>
   <description>PIN code credential, authenticator, required action and reset for Keycloak.</description>
@@ -67,7 +67,7 @@
   <scm>
     <url>https://github.com/p2-inc/keycloak-pin</url>
     <connection>scm:git:git@github.com:p2-inc/keycloak-pin.git</connection>
-    <tag>HEAD</tag>
+    <tag>v0.1</tag>
   </scm>
 
   <build>
