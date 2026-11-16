@@ -24,8 +24,9 @@ import org.keycloak.util.JsonSerialization;
  *       "memory": "7168", "parallelism": "1"}}}
  * </ul>
  *
- * <p>Only {@code argon2} credentials are supported; they are verified with Keycloak's own {@code
- * argon2} provider. While a user still has such a credential, the D4 failure counter and lock are
+ * <p>{@code argon2} credentials are verified with Keycloak's own {@code argon2} provider. {@code
+ * bcrypt} credentials (hashes imported from another system, with the modular-crypt string in
+ * {@code secretData.value} and no salt) are verified with {@link BcryptPinHash}. While a user still has such a credential, the D4 failure counter and lock are
  * kept as extra {@code failures} / {@code locked} fields in its credential data (their extension
  * ignores unknown fields).
  */
@@ -88,14 +89,34 @@ public final class LegacyPinCredential {
   }
 
   /**
-   * Whether this credential can be verified with Keycloak's {@code argon2} provider.
+   * Whether this credential can be verified: argon2 with a hash and salt (Keycloak's {@code
+   * argon2} provider), or bcrypt with a hash ({@link BcryptPinHash}; the salt is in the hash).
    *
-   * @return true for argon2 with a hash and salt
+   * @return true when migratable
    */
   public boolean isSupported() {
-    return PinConstants.HASH_ALGORITHM.equals(getAlgorithm())
-        && text(secretData, "value") != null
-        && text(secretData, "salt") != null;
+    if (getHash() == null) return false;
+    if (isBcrypt()) return true;
+    return PinConstants.HASH_ALGORITHM.equals(getAlgorithm()) && text(secretData, "salt") != null;
+  }
+
+  /**
+   * Whether the hash is bcrypt, imported from another system.
+   *
+   * @return true for {@code bcrypt}
+   */
+  public boolean isBcrypt() {
+    return BcryptPinHash.isBcrypt(getAlgorithm());
+  }
+
+  /**
+   * The stored hash ({@code secretData.value}): base64 for argon2, the modular-crypt string for
+   * bcrypt.
+   *
+   * @return hash, may be null
+   */
+  public String getHash() {
+    return text(secretData, "value");
   }
 
   /**

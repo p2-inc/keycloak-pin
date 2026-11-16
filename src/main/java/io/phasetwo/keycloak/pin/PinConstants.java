@@ -34,6 +34,12 @@ public final class PinConstants {
   /** Keycloak password hash provider id used to hash PINs. */
   public static final String HASH_ALGORITHM = "argon2";
 
+  /**
+   * Algorithm id of imported bcrypt PIN hashes. Verify only: a matching PIN is re-hashed with
+   * {@link #HASH_ALGORITHM}.
+   */
+  public static final String BCRYPT_ALGORITHM = "bcrypt";
+
   /** Required-action config key: number of digits a new PIN must have. */
   public static final String CONFIG_LENGTH = "length";
 

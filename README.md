@@ -91,9 +91,26 @@ We recommend switching to this extension rather than running both. Migration is 
 - When a user has no `phasetwo-pin` credential but has a `pin-code` credential hashed with `argon2`, the PIN authenticator verifies the entered PIN against it with Keycloak's argon2 provider. On success it creates a `phasetwo-pin` credential with the same PIN (and the length that PIN has) and removes the `pin-code` credential. The attempt counter and lock apply to `pin-code` credentials too until they are migrated.
 - `pin-code` credentials are accepted on user and realm import, so a realm exported from a server running their extension can be imported into one that runs only this extension.
 - Setting a new PIN removes any `pin-code` credential.
-- Not migrated: their configuration (PIN format, custom regex, server-wide `Config.Scope` settings), their reset endpoint and action token, their custom hash SPI, and credentials hashed with anything other than `argon2`. Users with such credentials need a new PIN (reset credentials flow or an administrator).
+- `pin-code` credentials with `"algorithm":"bcrypt"` (hashes imported through a custom `PinHashProvider`) are verified and migrated the same way; see [Importing bcrypt PIN hashes](#importing-bcrypt-pin-hashes).
+- Not migrated: their configuration (PIN format, custom regex, server-wide `Config.Scope` settings), their reset endpoint and action token, their custom hash SPI, and credentials hashed with anything other than `argon2` or `bcrypt`. Users with such credentials need a new PIN (reset credentials flow or an administrator).
 
 Replace their authenticator, condition and required action in your flows with **PIN**, `Condition - user configured` and **Configure PIN**, then remove their jar.
+
+## Importing bcrypt PIN hashes
+
+PINs from another system can be imported with their existing bcrypt hashes, so users keep their PIN. Create each user's credential (admin REST API on user create, or realm/user import) with type `phasetwo-pin`, the algorithm in `credentialData` and the full bcrypt string in `secretData.value`. The cost and salt are part of the string; `$2a$`, `$2b$` and `$2y$` are accepted.
+
+```json
+{
+  "type": "phasetwo-pin",
+  "credentialData": "{\"algorithm\":\"bcrypt\",\"length\":6}",
+  "secretData": "{\"value\":\"$2b$10$<22-character salt><31-character hash>\"}"
+}
+```
+
+`length` is optional. Without it the login page shows the generic "Enter your PIN" prompt until the first successful sign-in records the length.
+
+On the first correct PIN the credential is re-hashed with argon2 and keeps its id. From the start, wrong PINs count toward `max-attempts` and the lock. Bcrypt is verify-only: new and changed PINs are always argon2, and bcrypt is not registered as a Keycloak password hash provider, so it is not available to the realm password policy. Verification uses BouncyCastle's `OpenBSDBCrypt`, which ships with Keycloak's non-FIPS distribution. Peppered or pre-hashed PINs are not supported.
 
 ## Developer API
 

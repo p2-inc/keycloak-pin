@@ -23,6 +23,7 @@ A Keycloak provider jar (`@AutoService`, no framework). Spec: native-apps `spec/
 - `credential/PinCredentialProvider` (+Factory, id `phasetwo-pin`) — the public PIN service (`hasPin`, `getStoredLength`, `isLocked`, `verify`, `getRequiredLength`, `isWeakPinRejected`, `setPin`, `removePin`) and the `CredentialProvider`. Also claims the legacy `pin-code` type so it survives import.
 - `credential/PinCredentialModel`, `PinCredentialData`, `PinSecretData` — stored layout; the hash is Keycloak's `argon2` `PasswordHashProvider` output.
 - `credential/LegacyPinCredential` — read-only view of please-open.it `pin-code` credentials for migration (D6).
+- `credential/BcryptPinHash` — verify-only bcrypt (BouncyCastle `OpenBSDBCrypt`, provided by Keycloak) for PIN hashes imported as `phasetwo-pin` or `pin-code` with `algorithm: bcrypt`; a match is re-hashed to argon2. Not a `PasswordHashProvider`, so bcrypt never reaches the realm password policy.
 - `auth/PinAuthenticator` (+Factory, `phasetwo-pin`) — browser authenticator, thin over `verify`.
 - `auth/PinResetAuthenticator` (`phasetwo-pin-reset`) — reset credentials flow step.
 - `action/ConfigurePinRequiredAction` (+Factory, `phasetwo-configure-pin`) — set-PIN required action / AIA, thin over `setPin`.
@@ -30,7 +31,7 @@ A Keycloak provider jar (`@AutoService`, no framework). Spec: native-apps `spec/
 
 ## Key Design Constraints
 
-- No `Config.Scope`, no custom hash SPI, no REST endpoint, no action token: built-in config surfaces, `argon2`, reset credentials flow and execute-actions email only.
+- No `Config.Scope`, no custom hash SPI, no REST endpoint, no action token: built-in config surfaces, `argon2` (bcrypt is verify-only, for imports), reset credentials flow and execute-actions email only.
 - The service never emits events; authenticators and required actions do.
 - `CredentialTypeMetadata` may carry a create or an update action, never both: chosen by whether the user already has a PIN.
 - Lock is cleared only by removing the credential (reset flow, admin delete) or setting a new PIN.

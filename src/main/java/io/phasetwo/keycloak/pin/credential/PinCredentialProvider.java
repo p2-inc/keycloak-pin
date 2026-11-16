@@ -223,15 +223,21 @@ public class PinCredentialProvider
     if (data.isLocked()) return PinVerification.locked();
 
     PasswordCredentialModel hashed = model.toPasswordCredentialModel();
-    PasswordHashProvider hash = hashProvider(data.getAlgorithm());
-    boolean match = pin != null && !pin.isEmpty() && hash != null && hash.verify(pin, hashed);
+    boolean bcrypt = BcryptPinHash.isBcrypt(data.getAlgorithm());
+    PasswordHashProvider hash = bcrypt ? null : hashProvider(data.getAlgorithm());
+    boolean match =
+        bcrypt
+            ? BcryptPinHash.verify(model.getPinSecretData().getValue(), pin)
+            : pin != null && !pin.isEmpty() && hash != null && hash.verify(pin, hashed);
 
     if (match) {
       boolean changed = data.getFailures() != 0;
       data.setFailures(0);
-      if (needsRehash(realm, hash, data.getAlgorithm(), hashed)) {
+      if (bcrypt || needsRehash(realm, hash, data.getAlgorithm(), hashed)) {
         log.debugf("Re-hashing PIN of user %s", user.getId());
-        model.applyHash(argon2().encodedCredential(pin, -1), data.getLength());
+        // imported credentials may not record the length; the PIN that just verified has it
+        int length = data.getLength() > 0 ? data.getLength() : pin.length();
+        model.applyHash(argon2().encodedCredential(pin, -1), length);
         changed = true;
       }
       if (changed) {
@@ -252,9 +258,12 @@ public class PinCredentialProvider
   private PinVerification verifyLegacy(
       RealmModel realm, UserModel user, LegacyPinCredential legacy, String pin, int maxAttempts) {
     if (legacy.isLocked()) return PinVerification.locked();
-    PasswordHashProvider hash = argon2();
     boolean match =
-        pin != null && !pin.isEmpty() && hash.verify(pin, legacy.toPasswordCredentialModel());
+        legacy.isBcrypt()
+            ? BcryptPinHash.verify(legacy.getHash(), pin)
+            : pin != null
+                && !pin.isEmpty()
+                && argon2().verify(pin, legacy.toPasswordCredentialModel());
     if (match) {
       log.infof(
           "Migrating please-open.it pin-code credential of user %s to %s",
