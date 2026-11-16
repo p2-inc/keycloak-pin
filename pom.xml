@@ -206,12 +206,12 @@
       <version>1.22.2</version>
       <scope>test</scope>
     </dependency>
-    <!-- computes Argon2 hashes for the please-open.it pin-code migration fixtures, independent of Keycloak's provider -->
+    <!-- bcrypt verification of imported PIN hashes (OpenBSDBCrypt); Keycloak's non-FIPS distribution ships bcprov. Tests also use it for Argon2 and bcrypt fixtures, independent of Keycloak's provider -->
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
       <version>1.81</version>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 

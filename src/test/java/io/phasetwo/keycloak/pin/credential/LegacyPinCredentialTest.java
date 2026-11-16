@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.phasetwo.keycloak.pin.Argon2Fixtures;
+import io.phasetwo.keycloak.pin.BcryptFixtures;
 import io.phasetwo.keycloak.pin.PinConstants;
 import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,22 @@ class LegacyPinCredentialTest {
     assertEquals("id", params.getFirst("type"));
     assertEquals("32", params.getFirst("hashLength"));
     assertEquals(16, pw.getPasswordSecretData().getSalt().length);
+  }
+
+  @Test
+  void bcryptIsSupportedWithoutSalt() {
+    String[] json = BcryptFixtures.legacyPinCode("2468");
+    LegacyPinCredential legacy = LegacyPinCredential.parse(stored(json[0], json[1]));
+    assertTrue(legacy.isSupported());
+    assertTrue(legacy.isBcrypt());
+    assertTrue(BcryptPinHash.verify(legacy.getHash(), "2468"));
+    assertEquals(OptionalInt.empty(), legacy.getLength());
+  }
+
+  @Test
+  void bcryptWithoutHashIsNotSupported() {
+    assertFalse(
+        LegacyPinCredential.parse(stored("{}", "{\"algorithm\":\"bcrypt\"}")).isSupported());
   }
 
   @Test

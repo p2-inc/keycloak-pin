@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.phasetwo.keycloak.pin.Argon2Fixtures;
+import io.phasetwo.keycloak.pin.BcryptFixtures;
 import io.phasetwo.keycloak.pin.PinConstants;
 import java.util.List;
 import java.util.Map;
@@ -15,8 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.keycloak.events.Details;
 
 /**
- * Reset credentials flow ({@code phasetwo-pin-reset}), execute-actions email, and migration from
- * please-open.it's {@code pin-code} credential (spec D6).
+ * Reset credentials flow ({@code phasetwo-pin-reset}), execute-actions email, migration from
+ * please-open.it's {@code pin-code} credential (spec D6), and bcrypt PIN hashes imported from
+ * another system.
  */
 class PinResetAndMigrationTest extends AbstractPinIntegrationTest {
 
@@ -181,5 +183,71 @@ class PinResetAndMigrationTest extends AbstractPinIntegrationTest {
     Page again = loginWithPassword(new Browser(), "legacylock", PASSWORD);
     assertTrue(again.text().contains("PIN is locked"));
     assertEquals(1, credentials(userId, PinConstants.LEGACY_CREDENTIAL_TYPE).size());
+  }
+
+  @Test
+  void importedBcryptPin_verifiesThenRehashesToArgon2() throws Exception {
+    String userId =
+        createUser(
+            "bcrypt",
+            PASSWORD,
+            List.of(),
+            storedCredential(PinConstants.CREDENTIAL_TYPE, BcryptFixtures.phasetwoPin("135790")));
+
+    Browser browser = new Browser();
+    Page pinPage = loginWithPassword(browser, "bcrypt", PASSWORD);
+    Page wrong = submitPin(browser, pinPage, "000000");
+    assertTrue(wrong.text().contains("2 attempts remaining"), wrong.body());
+    JsonNode afterWrong = pinData(userId);
+    assertEquals("bcrypt", afterWrong.get("algorithm").asText());
+    assertEquals(1, afterWrong.get("failures").asInt());
+
+    assertTrue(submitPin(browser, wrong, "135790").isClientRedirect());
+    JsonNode data = pinData(userId);
+    assertEquals(PinConstants.HASH_ALGORITHM, data.get("algorithm").asText());
+    assertEquals(6, data.get("length").asInt(), "length taken from the PIN that verified");
+    assertEquals(0, data.get("failures").asInt());
+
+    Browser fresh = new Browser();
+    Page again = loginWithPassword(fresh, "bcrypt", PASSWORD);
+    assertTrue(again.text().contains("6-digit PIN"), again.body());
+    assertTrue(submitPin(fresh, again, "135790").isClientRedirect());
+  }
+
+  @Test
+  void importedBcryptPin_locks() throws Exception {
+    String userId =
+        createUser(
+            "bcryptlock",
+            PASSWORD,
+            List.of(),
+            storedCredential(PinConstants.CREDENTIAL_TYPE, BcryptFixtures.phasetwoPin("2580")));
+    Browser browser = new Browser();
+    Page page = loginWithPassword(browser, "bcryptlock", PASSWORD);
+    for (String wrong : List.of("0000", "1111", "2222")) page = submitPin(browser, page, wrong);
+    assertTrue(page.text().contains("PIN is locked"), page.body());
+    JsonNode data = pinData(userId);
+    assertTrue(data.get("locked").asBoolean());
+    assertEquals("bcrypt", data.get("algorithm").asText());
+  }
+
+  @Test
+  void migratesBcryptPinCode() throws Exception {
+    String userId =
+        createUser(
+            "legacybcrypt",
+            PASSWORD,
+            List.of(),
+            storedCredential(
+                PinConstants.LEGACY_CREDENTIAL_TYPE, BcryptFixtures.legacyPinCode("9753")));
+
+    Browser browser = new Browser();
+    Page pinPage = loginWithPassword(browser, "legacybcrypt", PASSWORD);
+    assertTrue(submitPin(browser, pinPage, "9753").isClientRedirect());
+    assertTrue(
+        credentials(userId, PinConstants.LEGACY_CREDENTIAL_TYPE).isEmpty(), "pin-code removed");
+    JsonNode data = pinData(userId);
+    assertEquals(PinConstants.HASH_ALGORITHM, data.get("algorithm").asText());
+    assertEquals(4, data.get("length").asInt());
   }
 }
